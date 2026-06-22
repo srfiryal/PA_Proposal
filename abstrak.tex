@@ -1,0 +1,31 @@
+\begin{center}
+    {\fontsize{12pt}{14pt}\selectfont\textbf{ABSTRAK}\par}
+    \vspace{0.8cm}
+\end{center}
+
+Pengembangan aplikasi mobile modern semakin bergantung pada integrasi REST API yang didefinisikan melalui spesifikasi OpenAPI. Untuk setiap endpoint API, pengembang harus membangun secara manual artefak kode pada tiga lapisan---data, logika bisnis, dan antarmuka pengguna---yang bersifat repetitif dan memakan waktu signifikan. Generator tradisional hanya menghasilkan kode lapisan data dasar tanpa menyentuh state management maupun UI, sementara pendekatan raw LLM menghasilkan kode yang tidak konsisten dan melanggar batasan arsitektur.
+
+Penelitian ini mengusulkan PRISM (\textit{Pipeline for Rapid Intelligent Scaffolding of Mobile features}), sebuah kerangka kerja berbasis baris perintah (CLI) yang mentransformasikan spesifikasi OpenAPI menjadi modul fitur Flutter yang lengkap dan koheren secara arsitektur melalui pipeline hibrida deterministik--LLM. Pipeline terdiri dari tahap parsing dan normalisasi spesifikasi, klasifikasi dan pengelompokan endpoint, pembentukan representasi intermediat (IR), pembangkitan kode deterministik untuk komponen berbasis skema, pengayaan semantik berbasis LLM untuk kasus ambigu, serta validasi dan perbaikan otomatis. PRISM memisahkan secara eksplisit antara aturan deterministik yang menangani informasi eksplisit dari OpenAPI (tipe data, format, constraint, enumerasi) dan pemrosesan LLM yang hanya digunakan untuk interpretasi semantik ambigu dan perbaikan kode. Sistem juga menerapkan penegakan batasan arsitektur yang memverifikasi arah dependensi, tanggung jawab tunggal, dan kebenaran impor pada kode yang dihasilkan.
+
+Evaluasi kerangka kerja dilakukan terhadap korpus REST API dunia nyata dengan mengukur metrik build success rate, kelengkapan lapisan (\textit{layer completeness}), kepatuhan arsitektur (\textit{pattern compliance}), cakupan pengujian, dan produktivitas pengembang. Hasil evaluasi dibandingkan dengan implementasi manual, generator tradisional, dan pendekatan raw LLM.
+
+\vspace{0.5cm}
+\noindent \textbf{Kata Kunci:} Pembangkitan Kode, Flutter, OpenAPI, \textit{Large Language Model}, \textit{Scaffolding}, Arsitektur Perangkat Lunak, \textit{State Management}, Pipeline Hibrida.
+
+\newpage
+
+\begin{center}
+    {\fontsize{12pt}{14pt}\selectfont\textbf{ABSTRACT}\par}
+    \vspace{0.8cm}
+\end{center}
+
+\textit{Modern mobile application development increasingly relies on REST API integration defined through OpenAPI specifications. For each API endpoint, developers must manually build code artifacts across three layers---data, business logic, and user interface---which are repetitive and time-consuming. Traditional generators only produce basic data-layer code without addressing state management or UI, while raw LLM approaches generate inconsistent code that violates architectural constraints.}
+
+\textit{This research proposes PRISM (Pipeline for Rapid Intelligent Scaffolding of Mobile features), a command-line framework that transforms OpenAPI specifications into complete, architecturally coherent Flutter feature modules through a hybrid deterministic--LLM pipeline. The pipeline consists of specification parsing and normalization, endpoint classification and feature grouping, intermediate representation (IR) construction, deterministic code generation for schema-based components, LLM-based semantic enrichment for ambiguous cases, and automated validation and repair. PRISM explicitly separates deterministic rules that handle explicit OpenAPI information (data types, formats, constraints, enumerations) from LLM processing that is only used for ambiguous semantic interpretation and code repair. The system also enforces architectural constraints that verify dependency direction, single responsibility, and import correctness in the generated code.}
+
+\textit{Framework evaluation is conducted against a corpus of real-world REST APIs by measuring build success rate, layer completeness, pattern compliance, test coverage, and developer productivity. Evaluation results are compared with manual implementation, traditional generators, and raw LLM approaches.}
+
+\vspace{0.5cm}
+\noindent \textbf{Keywords:} \textit{Code Generation, Flutter, OpenAPI, Large Language Model, Scaffolding, Software Architecture, State Management, Hybrid Pipeline}.
+
+\newpage

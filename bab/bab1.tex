@@ -1,0 +1,67 @@
+\chapter{PENDAHULUAN}
+
+\section{Latar Belakang}
+
+Perkembangan aplikasi mobile modern semakin mengikuti paradigma \textit{backend-driven}, di mana klien mobile mengonsumsi RESTful API yang didefinisikan melalui spesifikasi seperti OpenAPI 3.x \cite{baneas2021}. Untuk setiap endpoint API, pengembang mobile harus membangun secara manual sejumlah artefak kode yang saling bergantung, mulai dari \textit{data transfer object} (DTO) untuk serialisasi data, layanan repositori untuk komunikasi jaringan, komponen \textit{state management} untuk aliran data reaktif, hingga antarmuka layar pengguna \cite{lamothe2021}. Ketergantungan berlapis ini menciptakan beban implementasi yang signifikan dan bertumbuh secara linier seiring bertambahnya jumlah endpoint \cite{zhang2021}.
+
+Proses tersebut bersifat berulang dan mekanistis. Kajian literatur menunjukkan bahwa proporsi signifikan dari upaya pengembangan mobile untuk aplikasi berbasis data dihabiskan untuk pekerjaan repetitif, termasuk pembuatan \textit{boilerplate} dan pengerjaan ulang integrasi API \cite{khalfaoui2025}. Beban kerja ini semakin membesar seiring dengan tren industri saat ini, di mana perusahaan merancang sistem perangkat lunak mereka sebagai sekumpulan \textit{microservice} yang saling terlepas dan berkomunikasi melalui API. Akibat peningkatan drastis pada volume integrasi API tersebut, pengembang dapat menghabiskan berminggu-minggu waktu pengembangan murni untuk menyusun kode berstruktur identik yang mengikuti pola-pola yang sudah mapan \cite{lercher2024}.
+
+Pendekatan otomasi yang ada saat ini terbagi dalam dua kategori yang sama-sama tidak memadai. Generator tradisional seperti Swagger Codegen dan OpenAPI Generator hanya menghasilkan kelas DTO dan \textit{stub} API dasar tanpa menyentuh \textit{state management} maupun komponen UI \cite{openapitools2026}, sehingga tetap meninggalkan mayoritas upaya implementasi fitur kepada pengembang secara manual. Sementara itu, pendekatan \textit{raw} LLM menghasilkan kode yang tidak konsisten dan tidak mampu menjaga koherensi arsitektur lintas berkas \cite{ying2025}.
+
+Kemajuan terkini dalam \textit{agentic software engineering} dan \textit{multi-agent systems} berbasis LLM telah menunjukkan bahwa \textit{code generation} yang sadar konteks dan berlangkah ganda dapat secara signifikan melampaui pendekatan \textit{single-shot} \cite{he2025}. Teknik \textit{prompt engineering} dan \textit{chain-of-thought reasoning} membuka peluang untuk mendekomposisi tugas pembangkitan kode yang kompleks menjadi langkah-langkah terstruktur dan terverifikasi \cite{besta2025}.
+
+Dalam konteks ini, penelitian ini mengusulkan kerangka kerja PRISM (\textit{Pipeline for Rapid Intelligent Scaffolding of Mobile features}) sebagai solusi yang menggabungkan keandalan struktural \textit{schema-driven code generation} dengan kecerdasan kontekstual LLM, diperkuat oleh penegakan batasan arsitektur dan mekanisme perbaikan iteratif. Berbeda dari pendekatan \textit{multi-agent} pada umumnya, PRISM menerapkan pipeline hibrida deterministik--LLM yang terorkestrasi, di mana aturan deterministik menangani informasi eksplisit dari spesifikasi OpenAPI, dan LLM hanya digunakan untuk interpretasi semantik ambigu serta perbaikan kode. PRISM diwujudkan sebagai kakas baris perintah (CLI) yang mentransformasikan spesifikasi OpenAPI menjadi modul fitur Flutter yang lengkap dan koheren secara arsitektur.
+
+\section{Permasalahan}
+
+Pengembangan fitur mobile yang berbasis integrasi REST API menghadapi beberapa permasalahan mendasar yang menghambat produktivitas dan konsistensi kode:
+
+\begin{enumerate}
+    \item \textbf{Fragmentasi dan Redundansi Proses Implementasi.} Untuk setiap endpoint API baru, pengembang harus menuliskan secara manual empat hingga lima lapisan artefak yang strukturnya hampir identik namun harus dikerjakan dari awal setiap kali. Proses ini tidak hanya memakan waktu, tetapi juga rawan inkonsistensi antar-endpoint karena setiap pengembang memiliki gaya penulisan yang berbeda \cite{khalfaoui2025}.
+    
+    \item \textbf{Keterbatasan Generator Berbasis Template.} Generator tradisional seperti OpenAPI Generator beroperasi pada level sintaksis tanpa memahami pola arsitektur atau dependensi lintas lapisan. Alat-alat ini menghasilkan kode lapisan data tetapi meninggalkan \textit{state management}, komponen UI, dan pengujian sepenuhnya kepada pengembang \cite{openapitools2026}.
+    
+    \item \textbf{Inkonsistensi Arsitektur pada Pendekatan Generatif.} Sistem LLM tanpa kerangka penegakan arsitektur menghasilkan kode yang tidak konsisten secara lintas berkas dan berpotensi melanggar prinsip-prinsip desain yang fundamental \cite{ying2025}. Ketika kompleksitas proyek meningkat, konsistensi lintas-berkas menurun drastis karena LLM tidak memiliki mekanisme untuk memverifikasi kepatuhan terhadap invarian arsitektur yang telah ditetapkan \cite{ghorbani2024}.
+    
+    \item \textbf{Ketiadaan \textit{Co-generation Test}.} Tidak ada kerangka kerja yang ada saat ini yang mengintegrasikan pembangkitan pengujian secara bersamaan dengan kode produksi. Akibatnya, pengembang harus menulis pengujian secara manual setelah kode produksi selesai, yang sering kali diabaikan karena tekanan waktu \cite{haque2025}.
+\end{enumerate}
+
+\section{Tujuan}
+
+Tujuan dari Proyek Akhir ini adalah merancang dan mengimplementasikan kerangka kerja PRISM yang mampu mengotomasi pembangkitan modul fitur Flutter yang koheren secara arsitektur dari spesifikasi API. Secara spesifik, Proyek Akhir ini bertujuan untuk:
+
+\begin{enumerate}
+    \item Merancang dan mengimplementasikan kerangka kerja PRISM (\textit{Pipeline for Rapid Intelligent Scaffolding of Mobile features}) sebagai kakas CLI berbasis Python yang mentransformasikan spesifikasi OpenAPI menjadi modul fitur Flutter secara otomatis.
+    
+    \item Mengembangkan pipeline hibrida deterministik--LLM yang terdiri dari: (a) parsing dan validasi spesifikasi OpenAPI, (b) klasifikasi endpoint dan pembentukan representasi intermediat (IR), (c) pembangkitan kode deterministik untuk komponen berbasis skema (DTO, API client, repositori, validasi), (d) pengayaan semantik berbasis LLM untuk kasus ambigu dan perbaikan kode, serta (e) validasi dan perbaikan otomatis menggunakan kakas Dart/Flutter.
+    
+    \item Mengimplementasikan strategi \textit{schema-grounded prompting} yang menyertakan konteks dari tahap sebelumnya beserta mekanisme penegakan batasan arsitektur dan siklus perbaikan otomatis untuk menjamin kepatuhan terhadap pola dan konsistensi lintas lapisan.
+    
+    \item Mengevaluasi efektivitas kerangka kerja PRISM dibandingkan dengan pendekatan manual, generator tradisional, dan \textit{raw} LLM berdasarkan metrik \textit{build success rate}, kelengkapan lapisan, kepatuhan arsitektur, cakupan pengujian, dan produktivitas pengembang.
+\end{enumerate}
+
+\section{Manfaat}
+
+Proyek Akhir ini diharapkan memberikan manfaat dari beberapa perspektif.
+
+Dari sisi produktivitas pengembang, implementasi PRISM diharapkan mereduksi waktu implementasi per modul fitur secara signifikan. Pengembang dapat beralih fokus dari pekerjaan \textit{boilerplate} yang repetitif ke logika bisnis unik dan kustomisasi antarmuka yang memiliki nilai kreatif lebih tinggi.
+
+Dari sisi kualitas kode, PRISM menyediakan mekanisme penegakan batasan arsitektur yang memastikan kode yang dihasilkan mematuhi prinsip \textit{separation of concerns}, konvensi penamaan yang konsisten, dan struktur dependensi yang benar. \textit{Co-generation test} secara otomatis menghasilkan pengujian yang terintegrasi dengan kode produksi, mengurangi risiko \textit{regression bug} pada integrasi API.
+
+Dari sisi akademik, penelitian ini memberikan kontribusi berupa: (1) model formal untuk transformasi API-to-Feature yang memetakan elemen skema API ke komponen arsitektur mobile pada ketiga lapisan, (2) strategi \textit{schema-grounded prompting} dengan injeksi konteks bertahap yang dapat diadaptasi untuk domain \textit{mobile scaffolding} lainnya, dan (3) arsitektur pipeline hibrida yang memisahkan pembangkitan deterministik dari pemrosesan LLM, memungkinkan pengukuran kontribusi masing-masing komponen secara independen.
+
+\section{Sistematika Penulisan}
+
+Laporan Proyek Akhir ini disusun dalam tiga bab utama yang masing-masing membahas aspek penting dari proses penelitian dan pengembangan kerangka kerja PRISM. Sistematika penulisan laporan ini adalah sebagai berikut:
+
+\textbf{Bab 1 -- Pendahuluan}
+
+Bab ini berisi latar belakang yang mendasari dilakukannya Proyek Akhir, rumusan permasalahan dalam otomasi pembangkitan kode mobile, tujuan yang ingin dicapai, manfaat yang diharapkan, dan sistematika penulisan laporan.
+
+\textbf{Bab 2 -- Kajian Pustaka}
+
+Bab ini menyajikan teori-teori yang relevan dengan topik penelitian, meliputi spesifikasi OpenAPI dan ekosistem REST API, arsitektur aplikasi Flutter, \textit{code generation} berbasis LLM, \textit{code generation} deterministik, pipeline hibrida, representasi intermediat, penegakan batasan arsitektur, serta penelitian-penelitian terkait yang menjadi dasar bagi solusi yang diusulkan.
+
+\textbf{Bab 3 -- Desain Sistem}
+
+Bab ini menjelaskan desain sistem PRISM secara menyeluruh, mencakup arsitektur pipeline hibrida tujuh tahap, model transformasi API-to-Feature, strategi \textit{schema-grounded prompting}, mekanisme penegakan batasan arsitektur, alur \textit{test co-generation}, serta skenario uji coba dan rancangan evaluasi.

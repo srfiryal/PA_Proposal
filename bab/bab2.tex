@@ -1,0 +1,116 @@
+\chapter{KAJIAN PUSTAKA}
+
+Dalam upaya membangun sistem otomasi pembangkitan kode mobile yang andal dan koheren secara arsitektur, diperlukan pemahaman mendalam tentang ekosistem pengembangan aplikasi Flutter, spesifikasi API modern, teknik \textit{code generation} berbasis aturan maupun LLM, serta praktik arsitektur perangkat lunak yang telah mapan \cite{baneas2021,lamothe2021}. Kompleksitas integrasi API dalam pengembangan mobile menciptakan kebutuhan akan pendekatan otomasi yang tidak sekadar menghasilkan kode sintaksis, tetapi mampu mempertahankan koherensi arsitektur lintas lapisan secara menyeluruh \cite{zhang2021}. Kemajuan dalam teknik \textit{prompt engineering} dan pipeline terorkestrasi memberikan fondasi baru untuk membangun pipeline generasi kode yang terstruktur, \textit{schema-grounded}, dan mampu melakukan perbaikan diri secara iteratif \cite{he2025,besta2025}.
+
+\section{Deskripsi Permasalahan}
+
+Pengembangan fitur mobile yang berbasis integrasi REST API menghadapi beberapa permasalahan mendasar yang menghambat produktivitas dan konsistensi kode:
+
+\subsection{Fragmentasi dan Redundansi Proses Implementasi}
+
+Untuk setiap endpoint API baru, pengembang harus menuliskan secara manual empat hingga lima lapisan artefak yang strukturnya hampir identik namun harus dikerjakan dari awal setiap kali. Proses ini tidak hanya memakan waktu, tetapi juga rawan inkonsistensi antar-endpoint karena setiap pengembang memiliki gaya penulisan yang berbeda. Studi empiris mengkonfirmasi bahwa proporsi signifikan waktu pengembangan mobile untuk aplikasi berbasis data dihabiskan untuk pekerjaan \textit{boilerplate} ini \cite{khalfaoui2025}.
+
+\subsection{Keterbatasan Generator Berbasis Template}
+
+Generator tradisional seperti OpenAPI Generator beroperasi pada level sintaksis tanpa memahami pola arsitektur atau dependensi lintas lapisan. Alat-alat ini menghasilkan kelas DTO dan \textit{stub} API, tetapi tidak menyentuh \textit{state management}, komponen UI, dan pengujian \cite{openapitools2026}. Kode yang dihasilkan sering kali memerlukan adaptasi manual yang signifikan untuk menyesuaikan dengan konvensi proyek yang ada.
+
+\subsection{Inkonsistensi Arsitektur pada Pendekatan Generatif}
+
+Sistem LLM tanpa kerangka penegakan arsitektur menghasilkan kode yang tidak konsisten secara lintas berkas dan berpotensi melanggar prinsip-prinsip desain yang fundamental \cite{ying2025}. Ketika kompleksitas proyek meningkat, konsistensi lintas-berkas menurun drastis karena LLM tidak memiliki mekanisme untuk memverifikasi kepatuhan terhadap invarian arsitektur yang telah ditetapkan \cite{ghorbani2024}.
+
+\subsection{Ketiadaan \textit{Co-generation Test}}
+
+Tidak ada kerangka kerja yang ada saat ini yang mengintegrasikan pembangkitan pengujian secara bersamaan dengan kode produksi. Akibatnya, pengembang harus menulis pengujian secara manual setelah kode produksi selesai, yang sering kali diabaikan karena tekanan waktu dan menghasilkan cakupan pengujian yang rendah serta risiko \textit{regression} yang lebih tinggi \cite{haque2025}.
+
+\section{Teori Penunjang}
+
+\subsection{Spesifikasi OpenAPI dan Ekosistem REST API}
+
+OpenAPI Specification (OAS) adalah standar industri yang diterima secara luas untuk mendefinisikan antarmuka REST API secara \textit{machine-readable}. Versi OpenAPI 3.x mendefinisikan seperangkat endpoint $E = \{e_1, e_2, ..., e_n\}$ di mana setiap endpoint $e_i = (p_i, m_i, q_i, h_i, B_{req_i}, B_{res_i}, s_i)$ mengandung \textit{path template}, metode HTTP, parameter \textit{query} dan \textit{header}, skema \textit{body request} dan \textit{response}, serta kode status. Kemampuan introspeksi otomatis terhadap spesifikasi ini menjadi fondasi bagi pembangkitan kode yang berbasis skema.
+
+Ekosistem REST API modern ditandai oleh pertumbuhan volume endpoint yang pesat, terutama dalam arsitektur \textit{microservice} di mana setiap domain bisnis terekspos sebagai layanan independen dengan API-nya sendiri \cite{lercher2024}. Untuk aplikasi \textit{enterprise} dengan puluhan hingga ratusan endpoint, pengelolaan integrasi secara manual menjadi \textit{bottleneck} pengembangan yang signifikan, mendorong kebutuhan akan pendekatan otomasi yang sistematis dan dapat diandalkan.
+
+\subsection{Arsitektur Aplikasi Flutter dan Pola \textit{State Management}}
+
+Flutter adalah kerangka kerja UI \textit{cross-platform} yang dikembangkan oleh Google, memungkinkan pembangunan aplikasi mobile, web, dan desktop dari satu basis kode menggunakan bahasa Dart. Arsitektur aplikasi Flutter secara umum terdiri dari lapisan UI (\textit{presentation}) dan lapisan data (\textit{data layer}), dengan lapisan logika/domain (\textit{domain/logic layer}) yang dapat diperkenalkan ketika aplikasi memiliki logika bisnis sisi-klien yang cukup kompleks \cite{flutter2026}.
+
+Dalam kerangka kerja PRISM, arsitektur yang dipilih adalah \textbf{Presentation--Domain--Data}, yang memisahkan tanggung jawab ke dalam tiga lapisan dengan batasan dependensi yang tegas: (a) Presentation dapat bergantung pada Domain; (b) Data dapat mengimplementasikan kontrak yang didefinisikan di Domain; (c) Domain tidak boleh bergantung pada Presentation maupun implementasi Data yang konkret; (d) modul yang dihasilkan tidak boleh mengandung impor sirkular; serta (e) widget UI tidak boleh mengakses API client secara langsung.
+
+BLoC (\textit{Business Logic Component}) adalah pola \textit{state management} yang memisahkan logika bisnis dari UI melalui \textit{stream} events dan states. Pola ini menghasilkan \textit{events}, \textit{states}, dan logika transisi yang eksplisit, sehingga kelengkapan dan kebenaran arsitektur lebih mudah diukur. Kerangka kerja PRISM mengimplementasikan BLoC sebagai pola \textit{state management} utama, dengan antarmuka generator yang dirancang agar Riverpod dapat ditambahkan sebagai \textit{backend} di masa depan \cite{mahmoud2024}.
+
+\subsection{\textit{Code Generation} Berbasis LLM}
+
+\textit{Large Language Models} (LLM) telah menunjukkan kemampuan signifikan dalam pembangkitan kode pada level fungsi individual. Namun, evaluasi empiris mengungkapkan bahwa tanpa kerangka terstruktur, pendekatan \textit{raw} LLM menghasilkan konsistensi lintas-berkas yang menurun drastis seiring meningkatnya kompleksitas proyek \cite{ying2025}.
+
+Strategi \textit{schema-grounded prompting} mengatasi keterbatasan ini melalui injeksi konteks bertahap (\textit{structured context injection}), di mana artefak dari tahap sebelumnya disertakan ke dalam \textit{prompt} tahap berikutnya untuk memastikan konsistensi referensi tipe data lintas lapisan \cite{lee2021}. Pendekatan ini selaras dengan temuan penelitian terkini tentang \textit{chain-of-thought reasoning} yang menunjukkan bahwa dekomposisi tugas kompleks menjadi langkah-langkah terstruktur secara signifikan meningkatkan akurasi generasi \cite{besta2025}.
+
+\subsection{\textit{Code Generation} Deterministik dari Spesifikasi API}
+
+Informasi yang sudah didefinisikan secara eksplisit dalam spesifikasi OpenAPI dapat ditangani secara deterministik tanpa ketergantungan pada LLM \cite{openapi2021}. Atribut-atribut berikut memungkinkan pembangkitan kode berbasis aturan:
+
+\begin{itemize}
+    \item \texttt{format: email} $\rightarrow$ \textit{input} email dan validasi email
+    \item \texttt{readOnly: true} $\rightarrow$ field yang tidak dapat disunting
+    \item \texttt{enum} $\rightarrow$ \textit{dropdown} atau kontrol seleksi
+    \item \texttt{minimum}, \texttt{maximum}, \texttt{minLength}, \texttt{pattern} $\rightarrow$ validasi deterministik
+    \item \texttt{securitySchemes} $\rightarrow$ konfigurasi autentikasi
+    \item Metode HTTP dan kode status respons $\rightarrow$ klasifikasi operasi
+\end{itemize}
+
+Pendekatan deterministik memastikan konsistensi dan kebenaran tipe secara penuh untuk komponen yang informasinya sudah tersedia secara eksplisit dalam spesifikasi. LLM hanya digunakan ketika spesifikasi tidak lengkap atau ambigu \cite{khalfaoui2025}.
+
+\subsection{Pipeline Hibrida dan Representasi Intermediat}
+
+Pipeline hibrida deterministik--LLM memisahkan pembangkitan kode menjadi dua jalur yang jelas: komponen berbasis skema ditangani oleh aturan deterministik, sementara interpretasi semantik ambigu dan perbaikan kode ditangani oleh LLM \cite{ghorbani2024}. Pendekatan ini memungkinkan kontribusi LLM diukur secara independen dari pembangkitan kode biasa dan menghasilkan kode yang lebih andal.
+
+Representasi Intermediat (IR) bertindak sebagai kontrak stabil antara tahap \textit{parsing}, generasi deterministik, pemrosesan LLM, dan validasi. IR mendeskripsikan fitur aplikasi secara independen dari sintaks Dart yang dihasilkan, memungkinkan setiap tahap pipeline beroperasi pada representasi yang konsisten dan terstruktur \cite{lamothe2022}.
+
+\subsection{Penegakan Batasan Arsitektur}
+
+Penegakan batasan arsitektur secara otomatis adalah mekanisme untuk memastikan kode yang dihasilkan mematuhi invarian desain yang telah ditetapkan \cite{ghorbani2024}. Dalam PRISM, sistem ini memverifikasi lima kelas batasan utama: (1) arah dependensi yang benar, (2) \textit{single responsibility} per komponen fitur, (3) \textit{interface segregation} dengan antarmuka repositori di lapisan domain, (4) konvensi penamaan yang konsisten, dan (5) kebenaran impor tanpa dependensi sirkular. Pelanggaran terhadap batasan ini memicu siklus perbaikan otomatis hingga maksimal tiga iterasi.
+
+\subsection{\textit{Test Co-generation}}
+
+\textit{Test co-generation} adalah teknik pembangkitan pengujian secara bersamaan dengan kode produksi, memanfaatkan pengetahuan tentang struktur kode yang dihasilkan untuk mengidentifikasi kasus pengujian yang relevan secara otomatis \cite{yang2025}. Dalam PRISM, pengujian yang dihasilkan mencakup \textit{unit test} untuk transisi \textit{state} BLoC dengan \textit{mock} repositori, \textit{widget test} untuk perenderan layar dan validasi formulir, serta \textit{edge case} yang diidentifikasi melalui analisis spesifikasi.
+
+\section{Penelitian Terkait}
+
+Sejumlah penelitian telah berupaya mengatasi permasalahan pembangkitan kode dari spesifikasi API, baik melalui pendekatan berbasis aturan, berbasis LLM, maupun hibrida. Subbab ini mengkaji penelitian-penelitian tersebut dan mengidentifikasi celah penelitian yang diisi oleh PRISM.
+
+\subsection{Pembangkitan Kode dari Spesifikasi API}
+
+OpenAPI Generator \cite{openapitools2026} merupakan kakas \textit{open-source} yang paling banyak digunakan untuk membangkitkan kode dari spesifikasi OpenAPI. Kakas ini mendukung lebih dari 50 bahasa pemrograman dan kerangka kerja, termasuk Dart dan Flutter. Namun, cakupan pembangkitannya terbatas pada \textit{client library} dan \textit{server stub}, tanpa menyentuh lapisan \textit{state management}, komponen UI, pengujian, maupun validasi arsitektur. Celah antara kode yang dihasilkan OpenAPI Generator dan kebutuhan pengembangan fitur secara lengkap menjadi motivasi utama penelitian ini.
+
+Khalfaoui dkk. \cite{khalfaoui2025} mengusulkan FSMicroGenerator, sebuah kerangka kerja otomasi \textit{full-stack} berbasis \textit{microservice} yang membangkitkan kode dari spesifikasi API. Meskipun kerangka kerja ini menunjukkan kemajuan dalam otomasi \textit{full-stack}, pendekatannya berfokus pada arsitektur web tradisional dan tidak menangani spesifikasi \textit{mobile-native} seperti \textit{state management} Flutter dan komponen UI yang responsif.
+
+\subsection{\textit{Code Generation} Berbasis LLM}
+
+Ying dkk. \cite{ying2025} melakukan evaluasi sistematis terhadap kode yang dihasilkan oleh LLM dan mengidentifikasi bahwa konsistensi lintas-berkas merupakan kelemahan utama pendekatan \textit{raw} LLM. Penelitian ini menekankan perlunya pendekatan terstruktur yang dapat memverifikasi konsistensi arsitektur, yang menjadi salah satu fitur inti PRISM.
+
+He dkk. \cite{he2025} menyajikan tinjauan komprehensif mengenai sistem \textit{multi-agent} berbasis LLM dalam rekayasa perangkat lunak, mengidentifikasi kemampuan \textit{planning}, \textit{memory}, dan \textit{tool-use} sebagai kapabilitas kritis. Meskipun konsep \textit{multi-agent} memberikan wawasan berharga tentang dekomposisi tugas, implementasi PRISM memilih pendekatan pipeline terorkestrasi yang lebih sederhana untuk menghindari variabel tambahan dari arsitektur \textit{multi-agent} yang dapat meningkatkan kompleksitas implementasi dan evaluasi tanpa meningkatkan kontribusi tesis.
+
+\subsection{Penegakan dan Perbaikan Arsitektur}
+
+Ghorbani dkk. \cite{ghorbani2024} mengembangkan DARCY, sebuah sistem untuk mendeteksi dan memperbaiki inkonsistensi arsitektur secara otomatis dalam proyek Java menggunakan analisis statis dan \textit{guided refactoring}. Pendekatan ini membuktikan bahwa penegakan batasan arsitektur melalui analisis statis dapat secara efektif mengurangi pelanggaran desain. PRISM mengadaptasi konsep ini untuk konteks Dart/Flutter dengan batasan yang spesifik untuk arsitektur Presentation--Domain--Data.
+
+\subsection{Posisi Penelitian}
+
+Untuk memberikan gambaran komprehensif mengenai posisi dan kontribusi penelitian ini, Tabel~\ref{tab:perbandingan} menyajikan perbandingan pendekatan yang ada berdasarkan cakupan lapisan yang dihasilkan dan kemampuan penegakan arsitektur.
+
+\begin{table}[H]
+\caption{Perbandingan Pendekatan \textit{Code Generation}}
+\label{tab:perbandingan}
+\fontsize{10pt}{12pt}\selectfont
+\begin{tabular}{p{2.8cm}cccccc}
+\toprule
+\textbf{Pendekatan} & \textbf{DTO} & \textbf{API Client} & \textbf{State Mgmt} & \textbf{UI} & \textbf{Test} & \textbf{Arch. Enforce} \\
+\midrule
+OpenAPI Generator \cite{openapitools2026} & \checkmark & \checkmark & -- & -- & -- & -- \\
+Raw LLM (GPT-4) \cite{ying2025} & \checkmark & \checkmark & \checkmark & \checkmark & Parsial & -- \\
+FSMicroGenerator \cite{khalfaoui2025} & \checkmark & \checkmark & Parsial & Parsial & -- & -- \\
+\textbf{PRISM (Diusulkan)} & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Berdasarkan Tabel~\ref{tab:perbandingan}, teridentifikasi celah penelitian utama: tidak ada kerangka kerja yang secara bersamaan menghasilkan kode untuk seluruh lapisan (Presentation--Domain--Data) beserta pengujian secara otomatis dengan penegakan batasan arsitektur. PRISM mengisi celah ini melalui pipeline hibrida yang memisahkan pembangkitan deterministik dari pemrosesan LLM, memungkinkan evaluasi kontribusi masing-masing komponen secara independen.

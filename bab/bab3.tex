@@ -1,0 +1,227 @@
+\chapter{DESAIN SISTEM}
+
+Bab ini menjelaskan solusi yang diusulkan untuk menyelesaikan permasalahan yang telah diuraikan pada bab sebelumnya. Bab ini mendeskripsikan desain kerangka kerja PRISM yang dibangun untuk mengotomasi pembangkitan modul fitur Flutter yang koheren secara arsitektur dari spesifikasi API \textit{backend} melalui pipeline hibrida deterministik--LLM.
+
+\section{Deskripsi Solusi}
+
+Pengembangan fitur mobile berbasis integrasi REST API saat ini menghadapi tantangan fundamental berupa beban implementasi \textit{boilerplate} yang tinggi, keterbatasan generator tradisional yang hanya menghasilkan lapisan data dasar, inkonsistensi arsitektur pada pendekatan \textit{raw} LLM, dan ketiadaan \textit{co-generation test} secara otomatis.
+
+Solusi yang diusulkan adalah kerangka kerja PRISM (\textit{Pipeline for Rapid Intelligent Scaffolding of Mobile features}), sebuah kakas baris perintah (CLI) berbasis Python yang mentransformasikan spesifikasi OpenAPI/Swagger menjadi modul fitur Flutter secara \textit{end-to-end}. Penggunaan CLI sebagai bentuk implementasi utama memungkinkan pengembang menjalankan generator dari terminal dengan konfigurasi yang eksplisit:
+
+\begin{lstlisting}[language=bash]
+prism generate \
+  --spec openapi.yaml \
+  --state-management bloc \
+  --output lib/features/
+\end{lstlisting}
+
+PRISM beroperasi sebagai pipeline terorkestrasi dengan tahap-tahap yang dipisahkan oleh \textit{validation gate}. Setiap \textit{validation gate} memverifikasi konsistensi lintas lapisan sebelum pipeline melanjutkan ke tahap berikutnya. Apabila pelanggaran batasan arsitektur terdeteksi, sistem secara otomatis memicu siklus perbaikan (\textit{repair-and-regenerate}) hingga maksimal tiga iterasi.
+
+Komponen utama kerangka kerja PRISM terdiri dari:
+
+\begin{enumerate}
+    \item \textbf{CLI Framework} -- Kakas baris perintah sebagai produk utama yang dievaluasi dalam tesis, menangani orkestrasi pipeline dari masukan spesifikasi hingga luaran modul fitur.
+    \item \textbf{Internal Generator Library} -- Pustaka Python yang berisi \textit{parser}, representasi intermediat (IR), \textit{template}, validator, dan adapter LLM.
+    \item \textbf{Dart Support Package} -- Pustaka Dart kecil yang berisi kelas-kelas bersama seperti \texttt{Result}, \texttt{Failure}, model paginasi, pengecualian API, dan widget yang dapat digunakan kembali.
+    \item \textbf{MCP Adapter} (opsional) -- Integrasi masa depan untuk IDE atau asisten AI melalui Model Context Protocol, bukan kontribusi utama tesis.
+\end{enumerate}
+
+\section{Desain Sistem}
+
+\subsection{Arsitektur Sistem Secara Umum}
+
+Gambar~\ref{fig:arsitektur} mengilustrasikan arsitektur \textit{high-level} PRISM yang menunjukkan alur transformasi dari spesifikasi OpenAPI sebagai masukan hingga modul fitur Flutter yang lengkap sebagai keluaran.
+
+\begin{figure}[H]
+    \centering
+    % Placeholder untuk diagram arsitektur
+    \fbox{\parbox{0.85\textwidth}{
+        \centering
+        \vspace{4cm}
+        \textbf{Diagram Arsitektur PRISM}\\[0.2cm]
+        {\small OpenAPI Spec $\rightarrow$ Parser \& Normalizer $\rightarrow$ IR $\rightarrow$ [Deterministic Gen | LLM Enrichment] $\rightarrow$ Renderer $\rightarrow$ Validation $\rightarrow$ Flutter Module}
+        \vspace{4cm}
+    }}
+    \caption{Arsitektur \textit{High-Level} Kerangka Kerja PRISM}
+    \label{fig:arsitektur}
+\end{figure}
+
+Alur kerja umum sistem PRISM adalah sebagai berikut: (a) sistem menerima spesifikasi OpenAPI beserta konfigurasi proyek sebagai masukan; (b) \textit{parser} memproses, memvalidasi, dan menormalisasi representasi API; (c) sistem membentuk Representasi Intermediat (IR) yang terstruktur; (d) generator deterministik menghasilkan komponen berbasis skema; (e) LLM melakukan pengayaan semantik untuk kasus ambigu; (f) \textit{renderer} menggabungkan artefak deterministik dan LLM menjadi modul fitur Flutter; (g) sistem menjalankan validasi menggunakan kakas Dart/Flutter; serta (h) siklus perbaikan otomatis menangani kesalahan yang terdeteksi.
+
+\subsection{Pipeline Hibrida Tujuh Tahap}
+
+PRISM mengimplementasikan pipeline hibrida yang terdiri dari tujuh tahap utama, bukan pendekatan \textit{multi-agent}. Setiap tahap merupakan modul biasa yang dikoordinasikan oleh satu pipeline terorkestrasi. Pemilihan pendekatan pipeline, bukan \textit{multi-agent}, menghindari variabel tambahan seperti peran agen, strategi komunikasi, \textit{memory}, \textit{planning}, dan panggilan model yang dapat meningkatkan kompleksitas implementasi dan evaluasi tanpa meningkatkan kontribusi tesis.
+
+\begin{enumerate}
+    \item \textbf{Tahap 1: Parsing, Validasi, dan Normalisasi Spesifikasi.} Sistem membaca spesifikasi OpenAPI/Swagger dan mengekstraksi: endpoint, metode HTTP, parameter \textit{request}, \textit{body request}, skema respons, kode status, persyaratan autentikasi, batasan validasi, pola paginasi, dan referensi skema. Informasi yang diekstraksi dinormalisasi ke dalam format internal yang konsisten.
+    
+    \item \textbf{Tahap 2: Klasifikasi Operasi dan Pengelompokan Fitur.} Sistem mengklasifikasikan operasi ke dalam kategori: LIST, DETAIL, CREATE, UPDATE, DELETE, SEARCH, AUTH, UPLOAD, dan CUSTOM. Endpoint yang terkait kemudian dikelompokkan ke dalam modul fitur. Sebagai contoh, \texttt{GET /products}, \texttt{GET /products/\{id\}}, \texttt{POST /products}, \texttt{PUT /products/\{id\}}, dan \texttt{DELETE /products/\{id\}} dikelompokkan ke dalam fitur \texttt{Product}.
+    
+    \item \textbf{Tahap 3: Pembentukan Representasi Intermediat (IR).} Sistem membentuk IR yang mendeskripsikan fitur aplikasi secara independen dari sintaks Dart. IR berisi definisi fitur, daftar operasi, model dengan field dan tipenya, pilihan \textit{state management}, layar yang diperlukan, dan konfigurasi arsitektur. IR bertindak sebagai kontrak stabil antara seluruh tahap pipeline.
+    
+    \item \textbf{Tahap 4: Pembangkitan Deterministik.} Aturan deterministik dan \textit{template} menghasilkan komponen yang informasinya sudah tersedia secara eksplisit dalam spesifikasi: kelas DTO/model dengan \texttt{fromJson()} dan \texttt{toJson()}, layanan API, kontrak repositori, implementasi repositori, enumerasi, aturan validasi, model \textit{error}, dan model paginasi. Tahap ini tidak bergantung pada LLM.
+    
+    \item \textbf{Tahap 5: Pengayaan Semantik Berbasis LLM.} LLM menerima bagian IR yang relevan dan artefak yang telah dihasilkan sebelumnya. LLM digunakan hanya untuk: interpretasi field ambigu (misalnya, apakah \texttt{avatar} merupakan unggahan gambar), pemilihan komponen UI yang sesuai, pembuatan label yang ramah pengguna, pengelompokan endpoint kustom yang tidak biasa ke dalam fitur, dan perbaikan kode berdasarkan diagnostik kompilator/analisis statis. Luaran LLM menggunakan format terstruktur sehingga dapat divalidasi sebelum ditulis ke berkas sumber.
+    
+    \item \textbf{Tahap 6: Perenderan Kode.} Sistem menggabungkan artefak deterministik dan artefak berbantuan LLM menjadi modul fitur Flutter yang lengkap. Struktur yang dihasilkan mengikuti arsitektur Presentation--Domain--Data dengan batasan dependensi yang telah ditetapkan.
+    
+    \item \textbf{Tahap 7: Validasi dan Perbaikan Otomatis.} Kode yang dihasilkan divalidasi menggunakan kakas Dart/Flutter: \texttt{dart format}, \texttt{dart analyze}, dan \texttt{flutter test}. Validasi memeriksa kebenaran sintaks, kebenaran tipe, kebenaran impor, konvensi penamaan, arah dependensi, eksekusi pengujian, dan kepatuhan arsitektur. Ketika kesalahan terdeteksi, sistem mengategorikan masalah: kesalahan sederhana diperbaiki dengan aturan deterministik, kesalahan kontekstual dikirim ke LLM bersama dengan diagnostik, kontrak IR, aturan arsitektur, dan definisi tipe terkait.
+\end{enumerate}
+
+\subsection{Model Transformasi API-to-Feature}
+
+PRISM mendefinisikan model transformasi yang memetakan elemen spesifikasi OpenAPI ke komponen arsitektur mobile. Sebuah Modul Fitur $F$ didefinisikan sebagai:
+\begin{equation}
+    F_k = (D_k, L_k, P_k, T_k)
+\end{equation}
+di mana $D_k$ adalah Data Layer (DTO, API client, repositori), $L_k$ adalah Logic Layer (\textit{state management}), $P_k$ adalah Presentation Layer (\textit{screen}, \textit{widget}, \textit{route}), dan $T_k$ adalah Test Layer (\textit{unit test}, \textit{widget test}). Fungsi transformasi memetakan himpunan bagian endpoint dan konfigurasi arsitektur menjadi modul fitur lengkap:
+\begin{equation}
+    \Phi : 2^{E} \times C \rightarrow F
+\end{equation}
+di mana $C = (arch_{pattern}, state_{mgmt}, nav_{strategy}, config)$ menangkap konfigurasi arsitektur proyek.
+
+\subsection{Representasi Intermediat (IR)}
+
+IR adalah struktur data yang mendeskripsikan fitur aplikasi secara independen dari sintaks Dart. IR menjadi dasar bagi seluruh tahap pipeline dan memungkinkan setiap komponen beroperasi pada representasi yang konsisten. Contoh IR yang disederhanakan:
+
+\begin{lstlisting}[language=json]
+{
+  "feature": "product",
+  "operations": ["list", "detail", "create", "update", "delete"],
+  "models": [{
+    "name": "Product",
+    "fields": [
+      {"name": "id", "type": "integer", "readOnly": true},
+      {"name": "name", "type": "string", "required": true},
+      {"name": "price", "type": "number", "minimum": 0},
+      {"name": "category", "type": "string", "enum": ["food","drink"]}
+    ]
+  }],
+  "stateManagement": "bloc",
+  "screens": ["list", "detail", "form"]
+}
+\end{lstlisting}
+
+\subsection{\textit{Schema Reference Graph}}
+
+Berbeda dari \textit{Entity Relationship Graph} yang mengasumsikan hubungan basis data, PRISM menggunakan \textbf{Schema Reference Graph} yang merepresentasikan referensi antar skema berdasarkan informasi yang tersedia dalam spesifikasi OpenAPI. Hubungan antar skema diklasifikasikan ke dalam lima kategori:
+
+\begin{enumerate}
+    \item \textbf{Explicit Schema Reference} -- referensi \texttt{\$ref} eksplisit antar skema
+    \item \textbf{Nested Object Relation} -- objek bersarang dalam skema yang sama
+    \item \textbf{Collection Relation} -- array yang mereferensikan skema lain
+    \item \textbf{Heuristic ID-Based Relation} -- field ID yang menyarankan hubungan (ditandai sebagai probabilitas rendah)
+    \item \textbf{Unresolved Relation} -- hubungan yang tidak dapat ditentukan secara deterministik
+\end{enumerate}
+
+Hanya tiga kategori pertama yang diperlakukan sebagai deterministik. Kategori keempat dan kelima memerlukan konfirmasi dari konfigurasi pengguna atau pemrosesan LLM.
+
+\subsection{Penanganan Perilaku Lanjutan}
+
+Beberapa perilaku tidak dapat diturunkan secara aman dari spesifikasi API, antara lain: \textit{caching}, \textit{retry}, \textit{optimistic update}, \textit{offline switching}, dan paginasi. Perilaku ini hanya dihasilkan apabila: (1) dideskripsikan secara eksplisit melalui ekstensi OpenAPI (misalnya \texttt{x-cache-ttl}), (2) terdeteksi melalui struktur paginasi yang didukung, (3) dipilih dalam berkas konfigurasi proyek, atau (4) diinferensi oleh LLM dan ditandai sebagai berbobot rendah serta perlu ditinjau ulang (\textit{reviewable}).
+
+\subsection{Penegakan Batasan Arsitektur}
+
+Sistem penegakan batasan arsitektur memverifikasi lima kelas batasan pada setiap artefak yang dihasilkan:
+
+\begin{enumerate}
+    \item \textbf{Arah Dependensi} -- Presentation dapat bergantung pada Domain; Data mengimplementasikan kontrak Domain; Domain tidak boleh bergantung pada Presentation atau Data konkret; tidak ada dependensi sirkular.
+    \item \textbf{\textit{Single Responsibility}} -- Satu BLoC per fitur.
+    \item \textbf{\textit{Interface Segregation}} -- Antarmuka repositori didefinisikan di lapisan Domain.
+    \item \textbf{Konvensi Penamaan} -- Akhiran \texttt{*Repository}, \texttt{*Bloc}, \texttt{*Screen}, \texttt{*Model}.
+    \item \textbf{Kebenaran Impor} -- Tidak ada impor sirkular; widget UI tidak mengakses API client secara langsung.
+\end{enumerate}
+
+Pelanggaran memicu siklus perbaikan otomatis hingga tiga iterasi. \textit{Prompt} perbaikan menyertakan pelanggaran spesifik yang terdeteksi, segmen kode yang melanggar aturan, dan aturan arsitektur yang dilanggar.
+
+\subsection{Strategi \textit{Schema-Grounded Prompting}}
+
+Strategi \textit{prompting} PRISM menggunakan injeksi konteks terstruktur di mana setiap \textit{prompt} dibangun dari komponen-komponen berikut:
+
+\begin{equation}
+    \text{prompt}(t, g_j) = \text{SysPrompt} \oplus \text{SchemaCtx}(g_j) \oplus \text{PrevArtifacts}(t) \oplus \text{TaskInstr}(t) \oplus \text{Examples}(t)
+\end{equation}
+
+Komponen \texttt{PrevArtifacts} merupakan diferensiator utama: ketika menghasilkan BLoC, \textit{prompt} menyertakan DTO dan antarmuka repositori yang dihasilkan pada tahap deterministik, memastikan referensi tipe yang konsisten lintas lapisan. Pengelolaan \textit{context window} menggunakan \textit{schema chunking} untuk grup endpoint yang besar.
+
+\subsection{Struktur Modul Fitur yang Dihasilkan}
+
+Setelah seluruh tahap selesai, PRISM menghasilkan modul fitur Flutter dengan struktur berikut:
+
+\begin{lstlisting}[language=text]
+lib/features/product/
+  data/
+    models/product_model.dart
+    services/product_api_service.dart
+    repositories/product_repository_impl.dart
+  domain/
+    entities/product.dart
+    repositories/product_repository.dart
+  presentation/
+    bloc/product_bloc.dart
+    bloc/product_event.dart
+    bloc/product_state.dart
+    screens/product_list_screen.dart
+    screens/product_detail_screen.dart
+    screens/product_form_screen.dart
+    widgets/
+  tests/
+    unit/product_bloc_test.dart
+    widget/product_list_screen_test.dart
+\end{lstlisting}
+
+Setiap modul fitur yang dihasilkan dapat diintegrasikan ke dalam proyek Flutter yang sudah ada, mengikuti arsitektur yang dipilih, berisi komponen data, logika, dan presentasi, menyertakan pengujian dasar, serta lolos pemeriksaan format dan analisis statis.
+
+\section{Skenario Uji Coba}
+
+Skenario uji coba disusun untuk memvalidasi bahwa kerangka kerja PRISM mampu menghasilkan kode mobile yang fungsional, koheren secara arsitektur, dan hanya memerlukan penyesuaian minimal. Skenario ini mencakup lima jenis pengujian:
+
+\begin{enumerate}
+    \item \textbf{Uji \textit{Build Success Rate}.} Pengujian dilakukan dengan menjalankan \texttt{flutter build} pada kode yang dihasilkan PRISM untuk setiap modul fitur dari korpus REST API yang menjadi bahan evaluasi. \textit{Build success} dinyatakan ketika kode dapat dikompilasi tanpa \textit{error} pada \texttt{flutter analyze} dan \texttt{flutter test}.
+    
+    \item \textbf{Uji \textit{Layer Completeness}.} Pengujian dilakukan untuk memverifikasi bahwa PRISM menghasilkan artefak untuk seluruh lapisan arsitektur (Data, Logic, Presentation, Tests) secara lengkap. \textit{Layer Completeness Score} (LCS) dihitung sebagai rasio antara artefak yang dihasilkan PRISM dengan artefak yang diperlukan untuk setiap lapisan.
+    
+    \item \textbf{Uji \textit{Pattern Compliance}.} Pengujian dilakukan untuk memverifikasi bahwa kode yang dihasilkan mematuhi batasan arsitektur yang ditetapkan: arah dependensi, \textit{single responsibility}, \textit{interface segregation}, konvensi penamaan, dan kebenaran impor.
+    
+    \item \textbf{Uji \textit{Test Coverage}.} Pengujian dilakukan untuk mengukur cakupan pengujian yang dicapai oleh \textit{unit test} dan \textit{widget test} yang dihasilkan PRISM secara otomatis menggunakan \texttt{flutter test --coverage}.
+    
+    \item \textbf{Uji Produktivitas Pengembang.} Uji produktivitas dilakukan melalui studi terkontrol dengan melibatkan beberapa pengembang Flutter untuk mengimplementasikan fitur yang sama secara manual dan dengan PRISM. Metrik yang diukur meliputi waktu implementasi, jumlah baris kode yang ditulis manual, dan jumlah kesalahan yang ditemukan.
+\end{enumerate}
+
+\section{Rancangan Evaluasi}
+
+Rancangan evaluasi pada penelitian ini disusun untuk mengukur sejauh mana implementasi PRISM mampu meningkatkan produktivitas pengembang dan kualitas kode mobile yang dihasilkan dibandingkan dengan pendekatan yang ada. Seluruh evaluasi dilakukan pada korpus REST API dunia nyata yang mencakup berbagai domain aplikasi.
+
+\subsection{Evaluasi Kuantitatif}
+
+Evaluasi kuantitatif mengukur metrik objektif yang dapat dibandingkan secara langsung. Tabel~\ref{tab:metrik} merangkum metrik evaluasi, target PRISM, dan \textit{baseline} perbandingan.
+
+\begin{table}[H]
+\caption{Metrik Evaluasi dan Target PRISM}
+\label{tab:metrik}
+\fontsize{10pt}{12pt}\selectfont
+\begin{tabular}{p{2.8cm}cccc}
+\toprule
+\textbf{Metrik} & \textbf{Manual} & \textbf{OpenAPI Gen} & \textbf{Raw LLM} & \textbf{Target PRISM} \\
+\midrule
+\textit{Build Success Rate} & 100\% & 95--100\% & Variabel & $\geq$95\% \\
+\textit{Layer Completeness} & 1,00 & $\approx$0,22 & $\approx$0,67 & $\geq$0,94 \\
+\textit{Pattern Compliance} & 100\% & Tidak terukur & Variabel & $\geq$95\% \\
+\textit{Test Coverage} & Bergantung & -- & Parsial & $\geq$80\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Target-target dalam Tabel~\ref{tab:metrik} merupakan hipotesis yang akan divalidasi melalui eksperimen. Nilai aktual hanya dapat ditentukan setelah implementasi dan evaluasi selesai dilakukan.
+
+\subsection{Evaluasi Kualitas Kode}
+
+Evaluasi kualitas kode membandingkan karakteristik struktural kode yang dihasilkan PRISM dengan kode yang ditulis manual oleh pengembang berpengalaman. Metrik yang diukur meliputi: \textit{cyclomatic complexity} per \textit{method}, \textit{lines of code} per \textit{class}, \textit{methods} per \textit{class}, dan kepatuhan konvensi penamaan.
+
+\subsection{Evaluasi \textit{Developer Study}}
+
+\textit{Developer study} melibatkan pengembang Flutter untuk mengimplementasikan sebuah modul fitur lengkap (mencakup \textit{list}, \textit{detail}, \textit{create}, \textit{update}, \textit{delete}) dari REST API yang sama, secara manual dan dengan PRISM. Unit evaluasi utama adalah \textbf{satu grup endpoint atau modul fitur}, bukan per endpoint individual, karena satu fitur umumnya terdiri dari beberapa endpoint yang saling terkait. Peserta diukur dari sisi waktu penyelesaian, jumlah baris kode yang ditulis manual, jumlah kesalahan pada fase \textit{review}, dan kepuasan pengguna (skala 1--5).
+
+\subsection{Kesimpulan Rancangan Evaluasi}
+
+Perbandingan dilakukan antara empat kondisi: implementasi manual oleh pengembang (\textit{baseline}), OpenAPI Generator, \textit{raw} LLM, dan PRISM untuk setiap metrik yang telah ditentukan. Hasil evaluasi diharapkan menunjukkan peningkatan pada aspek produktivitas dan kualitas kode, sekaligus membuktikan bahwa pendekatan pipeline hibrida deterministik--LLM dengan \textit{schema-grounded prompting} dan penegakan batasan arsitektur layak diterapkan sebagai solusi otomasi pembangkitan kode mobile dalam pengembangan aplikasi berbasis API.

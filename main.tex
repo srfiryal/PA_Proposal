@@ -1,0 +1,274 @@
+\documentclass[12pt,a4paper,twoside,openright]{report}
+
+\raggedbottom
+
+% =========================================================
+% KONFIGURASI CUSTOM
+% =========================================================
+\newif\ifshowpagenumberaftercover
+\showpagenumberaftercoverfalse
+
+% =========================================================
+% PACKAGE YANG DIWAJIBKAN
+% =========================================================
+\usepackage[a4paper, inner=2.5cm, outer=2cm, top=2.5cm, bottom=2cm, headheight=30pt, headsep=0.8cm]{geometry}
+\usepackage{times} % Font utama: Times New Roman
+\usepackage[singlespacing]{setspace}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{indentfirst}
+\usepackage{tocloft}
+\usepackage{hyperref}
+\usepackage{etoolbox}
+\usepackage{emptypage}
+\usepackage{pdflscape}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{listings}
+\usepackage{titlesec}
+\usepackage{caption}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+% =========================================================
+% PENGATURAN BIBLIOGRAPHY (BIBLATEX) DENGAN IEEE STYLE
+% =========================================================
+\usepackage[style=ieee,backend=biber,sorting=nty]{biblatex}
+\addbibresource{daftarpustaka.bib}
+
+% =========================================================
+% ATURAN PARAGRAF & INDENTASI
+% =========================================================
+\setlength{\parindent}{1cm}
+\setlength{\parskip}{12pt}
+
+\hyphenpenalty=10000
+\exhyphenpenalty=10000
+\sloppy
+
+% =========================================================
+% KUSTOMISASI HALAMAN KOSONG OTOMATIS
+% =========================================================
+\makeatletter
+\renewcommand*{\cleardoublepage}{%
+  \clearpage
+  \if@twoside
+    \ifodd\c@page
+    \else
+      \thispagestyle{fancy}%
+      \vspace*{\fill}%
+      \begin{center}
+        {\fontsize{12pt}{14pt}\selectfont\textit{(halaman ini sengaja dikosongkan)}}
+      \end{center}%
+      \vfill%
+      \newpage
+      \if@twocolumn
+        \hbox{}%
+        \newpage
+      \fi
+    \fi
+  \fi
+}
+\makeatother
+
+% =========================================================
+% KUSTOMISASI FORMAT JUDUL BAB DAN SUB-BAB (TITLESEC)
+% =========================================================
+\titleformat{\chapter}[display]
+  {\normalfont\fontsize{12pt}{14pt}\bfseries\centering}
+  {\MakeUppercase{BAB \thechapter}}
+  {1ex}
+  {\MakeUppercase}
+\titlespacing*{\chapter}{0pt}{-5pt}{0.6cm}
+
+\titleformat{\section}
+  {\normalfont\fontsize{12pt}{14pt}\bfseries}
+  {\thesection}
+  {1em}
+  {}
+\titlespacing*{\section}{0pt}{12pt}{6pt}
+
+\titleformat{\subsection}
+  {\normalfont\fontsize{12pt}{14pt}\bfseries}
+  {\thesubsection}
+  {1em}
+  {}
+\titlespacing*{\subsection}{0pt}{12pt}{6pt}
+
+\titleformat{\subsubsection}
+  {\normalfont\fontsize{12pt}{14pt}\bfseries}
+  {\thesubsubsection}
+  {1em}
+  {}
+\titlespacing*{\subsubsection}{0pt}{12pt}{6pt}
+
+% =========================================================
+% KUSTOMISASI POTONGAN KODE
+% =========================================================
+\lstset{
+  basicstyle=\ttfamily\scriptsize,
+  breaklines=true,
+  breakatwhitespace=false,
+  breakautoindent=true,
+  breakindent=0pt,
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  postbreak=\mbox{\textcolor{gray}{\tiny$\hookrightarrow$}\space},
+  frame=single,
+  framesep=3pt,
+  xleftmargin=0pt,
+  xrightmargin=0pt,
+  resetmargins=true,
+  linewidth=\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax
+}
+
+% =========================================================
+% KUSTOMISASI DAFTAR ISI, DAFTAR GAMBAR, DAN DAFTAR TABEL
+% =========================================================
+\renewcommand{\cfttoctitlefont}{\hfill\normalfont\fontsize{12pt}{14pt}\bfseries}
+\renewcommand{\cftloftitlefont}{\hfill\normalfont\fontsize{12pt}{14pt}\bfseries}
+\renewcommand{\cftlottitlefont}{\hfill\normalfont\fontsize{12pt}{14pt}\bfseries}
+\renewcommand{\cftaftertoctitle}{\hfill}
+\renewcommand{\cftafterloftitle}{\hfill}
+\renewcommand{\cftafterlottitle}{\hfill}
+\setlength{\cftbeforetoctitleskip}{0pt}
+\setlength{\cftbeforeloftitleskip}{0pt}
+\setlength{\cftbeforelottitleskip}{0pt}
+\setlength{\cftaftertoctitleskip}{1.5em}
+\setlength{\cftafterloftitleskip}{1.5em}
+\setlength{\cftafterlottitleskip}{1.5em}
+\patchcmd{\tableofcontents}{\chapter*{\contentsname}}{\chapter*{\contentsname}\thispagestyle{fancy}\pagestyle{fancy}}{}{}
+\patchcmd{\listoffigures}{\chapter*{\listfigurename}}{\chapter*{\listfigurename}\thispagestyle{fancy}\pagestyle{fancy}}{}{}
+\patchcmd{\listoftables}{\chapter*{\listtablename}}{\chapter*{\listtablename}\thispagestyle{fancy}\pagestyle{fancy}}{}{}
+
+% =========================================================
+% KUSTOMISASI PENOMORAN HALAMAN (FANCYHDR)
+% =========================================================
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[C]{\fontsize{12pt}{14pt}\selectfont\textbf{PROPOSAL PROYEK AKHIR}\\[0.2cm]}
+\fancyfoot[C]{\fontsize{12pt}{14pt}\selectfont\thepage}
+\renewcommand{\headrulewidth}{1pt}
+\renewcommand{\footrulewidth}{1pt}
+
+\fancypagestyle{plain}{
+  \fancyhf{}
+  \fancyhead[C]{\fontsize{12pt}{14pt}\selectfont\textbf{PROPOSAL PROYEK AKHIR}\\[0.2cm]}
+  \fancyfoot[C]{\fontsize{12pt}{14pt}\selectfont\thepage}
+  \renewcommand{\headrulewidth}{1pt}
+  \renewcommand{\footrulewidth}{1pt}
+}
+
+% =========================================================
+% KUSTOMISASI CAPTION TABEL & GAMBAR
+% =========================================================
+\DeclareCaptionFormat{customtabel}{\textbf{#1}#2#3}
+\captionsetup[table]{
+  format=hang,
+  font={singlespacing,normalsize},
+  labelfont=bf,
+  labelsep=colon,
+  justification=justified,
+  singlelinecheck=false,
+  position=top
+}
+
+\captionsetup[figure]{
+  format=plain,
+  font={singlespacing,normalsize},
+  labelfont=bf,
+  labelsep=colon,
+  justification=centering,
+  singlelinecheck=true,
+  position=bottom
+}
+
+\renewcommand{\tablename}{Tabel}
+\renewcommand{\figurename}{Gambar}
+
+\numberwithin{table}{chapter}
+\numberwithin{figure}{chapter}
+
+% =========================================================
+% TAMPILAN HYPERREF
+% =========================================================
+\hypersetup{
+  colorlinks=false,
+  pdfborder={0 0 0},
+}
+
+% =========================================================
+% MULAI DOKUMEN
+% =========================================================
+\begin{document}
+
+% ---------------------------------------------------------
+% BAGIAN AWAL (COVER)
+% ---------------------------------------------------------
+\include{cover}
+\clearpage
+\ifshowpagenumberaftercover
+  \thispagestyle{plain}
+\else
+  \thispagestyle{empty}
+\fi
+\vspace*{\fill}
+\begin{center}
+  {\fontsize{12pt}{14pt}\selectfont\textit{(halaman ini sengaja dikosongkan)}}
+\end{center}
+\vfill
+\clearpage
+
+\pagenumbering{roman}
+
+\include{pengesahan}
+\clearpage
+
+\include{abstrak}
+\cleardoublepage
+
+\include{katapengantar}
+\cleardoublepage
+
+% ---------------------------------------------------------
+% DAFTAR ISI, DAFTAR GAMBAR, DAFTAR TABEL
+% ---------------------------------------------------------
+\renewcommand{\contentsname}{DAFTAR ISI}
+\renewcommand{\listfigurename}{DAFTAR GAMBAR}
+\renewcommand{\listtablename}{DAFTAR TABEL}
+
+\tableofcontents
+\cleardoublepage
+
+\listoffigures
+\cleardoublepage
+
+\listoftables
+\cleardoublepage
+
+% ---------------------------------------------------------
+% BAGIAN INTI (BAB 1 - 3)
+% ---------------------------------------------------------
+\pagenumbering{arabic}
+
+\include{bab/bab1}
+\cleardoublepage
+
+\include{bab/bab2}
+\cleardoublepage
+
+\include{bab/bab3}
+\cleardoublepage
+
+% ---------------------------------------------------------
+% DAFTAR PUSTAKA
+% ---------------------------------------------------------
+\printbibliography[title={DAFTAR PUSTAKA}]
+\cleardoublepage
+
+\end{document}
